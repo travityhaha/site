@@ -75,16 +75,15 @@ section{margin-top:44px}
 .ph{font-size:10px;color:var(--mut);margin:2px 0 10px 2px}
 .tr{display:flex;align-items:center;gap:12px;padding:7px 2px}
 .tr .n{width:20px;font-size:10px;color:#5d5d68}
-.tr .art{width:32px;height:32px;border-radius:8px;flex:none;display:grid;place-items:center;background:#eee;color:#fff}
-.tr .art svg{fill:#fff;stroke:#fff;font-size:20px}
-.tr .art.star{background:#f1f1f1}
-.tr .art.star svg{fill:#fff;stroke:#ddd;stroke-width:1}
+.tr .art{width:32px;height:32px;border-radius:8px;flex:none;display:grid;place-items:center;color:#fff}
 .tr .t{flex:1;min-width:0}
 .tr b{display:block;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tr small{display:block;font-size:10px;color:var(--mut)}
 .tr .c{font-size:11px;color:var(--mut)}
 .now{display:flex;gap:18px;align-items:center;padding:14px 10px}
-.now .cover{width:108px;height:108px;border-radius:18px;flex:none;box-shadow:0 14px 30px -10px rgba(0,0,0,.8)}
+.now .cover{width:108px;height:108px;border-radius:18px;flex:none;box-shadow:0 14px 30px -10px rgba(0,0,0,.8);display:grid;place-items:center;color:#fff;font-size:44px}
+.tr .art>svg{font-size:16px}
+.has-art>svg{display:none}
 .now small{font-size:10px;color:var(--mut)}
 .now h3{margin:4px 0 6px;font:700 20px Poppins,sans-serif;letter-spacing:-.02em}
 .now .a{font-size:14px;color:#d0d0d8;font-weight:500}
@@ -240,34 +239,78 @@ window.addEventListener("scroll",spy,{passive:true});spy();
 </script>
 <script>
 (function(){
-var D={
-tracks:[["neon static","orla vance",39],["slow bloom","orla vance",37],["Paper Planes","the marlow",18],["after hours","kito",16],["Glass Season","Dune Atlas",15],["the drive home","sable",15],["Low Tide","Pale Hours",15],["In & Out","Rue Calloway",14],["hollow 02","orla vance",13],["sunday static","kito",13],["Halos","Dune Atlas",13],["i hope it rains","sable",12]],
-albums:[["i hope it rains forever","sable",108],["night shift","orla vance",59],["slow bloom","orla vance",37],["Grit & Glow","Rue Calloway",21],["Paper Planes","the marlow",18],["static hearts","kito",16],["Glass Season","Dune Atlas",15],["LOW TIDE II","Pale Hours",15],["halo effect","Dune Atlas",13],["moth to flame","sable",11]],
-artists:[["orla vance",141],["sable",114],["kito",40],["Rue Calloway",32],["Dune Atlas",26],["the marlow",24],["Pale Hours",23],["Ivo Lane",21],["Mina Rook",20],["Hush Club",19]]
-};
+/* fill these in to show your real listening (api key: last.fm/api/account/create) */
+var USER="handsome_racoon";
+var KEY="55faf638437f62908d45f3a43270859d";
 var ICON={tracks:'<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',artists:'<svg viewBox="0 0 24 24"><circle cx="7" cy="10" r="2"/><circle cx="12" cy="7" r="2"/><circle cx="17" cy="10" r="2"/><path d="M7 18c0-3 2-5 5-5s5 2 5 5z"/></svg>',albums:'<svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M7 7h10"/></svg>'};
-var STAR='<svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.8 6.3.8-4.6 4.4 1.2 6.3L12 17.2 6.4 20.3l1.2-6.3L3 9.6l6.3-.8z"/></svg>';
 function hue(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%360;return h}
 function grad(s){var h=hue(s);return"linear-gradient(135deg,hsl("+h+",60%,48%),hsl("+((h+60)%360)+",55%,22%))"}
-function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;")}
-function list(k,label){
-var h='<p class="ph">'+label+' · this week</p>';
-D[k].forEach(function(r,i){
-var n=("0"+(i+1)).slice(-2),art=k=="albums"?'<div class="art" style="background:'+grad(r[0])+'"></div>':'<div class="art star">'+STAR+'</div>';
-var sub=k=="artists"?"":'<small>'+esc(r[1])+'</small>',c=r[k=="artists"?1:2];
-h+='<div class="tr"><span class="n">'+n+'</span>'+art+'<div class="t"><b>'+esc(r[0])+'</b>'+sub+'</div><span class="c">'+c+'</span></div>';
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function num(n){return Number(n||0).toLocaleString("en-US")}
+function msg(t){return'<p class="ph">'+t+'</p>'}
+function arr(x){return x?[].concat(x):[]}
+function data(k,artist,name){return' data-k="'+k+'" data-a="'+esc(artist)+'" data-n="'+esc(name)+'"'}
+/* cover art and artist photos from deezer (last.fm often has none) */
+var cache={},seq=0;
+function norm(s){return String(s||"").toLowerCase().replace(/\s*[(\[].*$/,"").trim()}
+function deezer(k,artist,name){
+var key=[k,artist,name].join("|");
+return cache[key]||(cache[key]=new Promise(function(done){
+var cb="dz"+(++seq),el=document.createElement("script"),timer=setTimeout(function(){end("",true)},8000);
+function end(url,retry){clearTimeout(timer);window[cb]=function(){};el.remove();if(retry)delete cache[key];done(url)}
+window[cb]=function(j){
+var hit=(j&&j.data||[]).filter(function(d){
+return k=="artists"?norm(d.name)===norm(name):norm(d.artist&&d.artist.name)===norm(artist)&&norm(d.title)===norm(name)})[0];
+var url=hit?(k=="artists"?hit.picture_medium:k=="albums"?hit.cover_medium:hit.album&&hit.album.cover_medium):"";
+end(/^https:\/\/[^'"()\s]+$/.test(url||"")&&url.indexOf("/artist//")<0?url:"",j&&j.error)};
+el.onerror=function(){end("",true)};
+el.src="https://api.deezer.com/search/"+k.slice(0,-1)+"?q="+encodeURIComponent((artist+" "+name).trim())+"&limit=10&output=jsonp&callback="+cb;
+document.head.appendChild(el)}))
+}
+function covers(){
+[].forEach.call(p.querySelectorAll("[data-k]"),function(e){
+deezer(e.dataset.k,e.dataset.a,e.dataset.n).then(function(url){
+if(url){e.style.background="url('"+url+"') center/cover";e.classList.add("has-art")}})})
+}
+function api(method,extra){
+return fetch("https://ws.audioscrobbler.com/2.0/?method="+method+"&user="+encodeURIComponent(USER)+"&api_key="+encodeURIComponent(KEY)+"&format=json"+(extra||""),{cache:"no-store"})
+.then(function(r){return r.json()}).then(function(j){if(j.error)throw new Error(j.message);return j})
+}
+function list(k,label,items){
+if(!items.length)return msg("nothing played this week yet.");
+var h=msg(label+" · this week");
+items.forEach(function(r,i){
+var n=("0"+(i+1)).slice(-2),who=k=="artists"?"":r.artist.name;
+var art='<div class="art" style="background:'+grad(r.name)+'"'+data(k,who,r.name)+'>'+ICON.tracks+'</div>';
+var sub=k=="artists"?"":'<small>'+esc(r.artist.name)+'</small>';
+h+='<div class="tr"><span class="n">'+n+'</span>'+art+'<div class="t"><b>'+esc(r.name)+'</b>'+sub+'</div><span class="c">'+num(r.playcount)+'</span></div>';
 });return h}
-function stat(k,n,l){return'<div class="stat"><b>'+ICON[k]+n+'</b><span>'+l+'</span></div>'}
+function top(k,one){return api("user.gettop"+k,"&period=7day&limit=12").then(function(j){return list(k,"top "+k,arr(j["top"+k][one]))})}
+function stat(k,n,l){return'<div class="stat"><b>'+ICON[k]+num(n)+'</b><span>'+l+'</span></div>'}
 var V={
-now:function(){return'<div class="now"><div class="cover" style="background:'+grad("halo")+'"></div><div><small>last played</small><h3>halo season</h3><div class="a">Mina Rook</div><div class="al">halo season</div><a class="btn" href="#"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></svg>last.fm</a></div></div>'},
-tracks:function(){return list("tracks","top tracks")},
-albums:function(){return list("albums","top albums")},
-artists:function(){return list("artists","top artists")},
-stats:function(){return'<div class="stats">'+stat("tracks","41,203","scrobbles")+stat("artists","980","artists")+stat("tracks","2,516","tracks")+stat("albums","1,874","albums")+'</div><p class="src">last.fm · yourusername</p>'}
+now:function(){return api("user.getrecenttracks","&limit=1").then(function(j){
+var x=arr(j.recenttracks.track)[0];
+if(!x)return msg("no scrobbles yet.");
+var live=x["@attr"]&&x["@attr"].nowplaying==="true";
+var img=arr(x.image).pop(),src=img&&img["#text"];
+var has=src&&/^https:\/\/[^'"()\s]+$/.test(src)&&src.indexOf("2a96cbd8b46e442fc41c2b86b821562f")<0;
+var bg=has?"url('"+src+"') center/cover":grad(x.name);
+return'<div class="now"><div class="cover" style="background:'+esc(bg)+'"'+(has?"":data("tracks",x.artist["#text"],x.name))+'>'+(has?"":ICON.tracks)+'</div><div><small>'+(live?"now playing":"last played")+'</small><h3>'+esc(x.name)+'</h3><div class="a">'+esc(x.artist["#text"])+'</div><div class="al">'+esc((x.album&&x.album["#text"])||"")+'</div><a class="btn" href="https://www.last.fm/user/'+encodeURIComponent(USER)+'" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></svg>last.fm</a></div></div>'})},
+tracks:function(){return top("tracks","track")},
+albums:function(){return top("albums","album")},
+artists:function(){return top("artists","artist")},
+stats:function(){return api("user.getinfo").then(function(j){var u=j.user;
+return'<div class="stats">'+stat("tracks",u.playcount,"scrobbles")+stat("artists",u.artist_count,"artists")+stat("tracks",u.track_count,"tracks")+stat("albums",u.album_count,"albums")+'</div><p class="src">last.fm · '+esc(USER)+'</p>'})}
 };
-var p=document.getElementById("panel"),b=[].slice.call(document.querySelectorAll("#tabs button"));
-function show(k){p.innerHTML=V[k]();b.forEach(function(x){x.classList.toggle("on",x.dataset.t===k)})}
+var p=document.getElementById("panel"),b=[].slice.call(document.querySelectorAll("#tabs button")),active="now";
+function show(k,quiet){
+active=k;b.forEach(function(x){x.classList.toggle("on",x.dataset.t===k)});
+if(!USER||!KEY){p.innerHTML=msg("music stats coming soon.");return}
+if(!quiet)p.innerHTML=msg("loading…");
+V[k]().then(function(h){if(active===k){p.innerHTML=h;covers()}}).catch(function(){if(active===k&&!quiet)p.innerHTML=msg("couldn’t load last.fm right now.")});
+}
 b.forEach(function(x){x.addEventListener("click",function(){show(x.dataset.t)})});
+setInterval(function(){if(active==="now"&&USER&&KEY&&!document.hidden&&document.body.dataset.view==="music")show("now",true)},30000);
 show("now");
 })();
 </script>
