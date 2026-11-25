@@ -227,9 +227,9 @@ window.addEventListener("scroll",spy,{passive:true});spy();
 </script>
 <script>
 (function(){
-/* fill these in to show your real listening (api key: last.fm/api/account/create) */
+/* public username, and the address of your last.fm worker (the key lives there) */
 var USER="handsome_racoon";
-var KEY="55faf638437f62908d45f3a43270859d";
+var API="https://lastfm.ahahajahhfq.workers.dev/";
 var ICON={tracks:'<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',artists:'<svg viewBox="0 0 24 24"><circle cx="7" cy="10" r="2"/><circle cx="12" cy="7" r="2"/><circle cx="17" cy="10" r="2"/><path d="M7 18c0-3 2-5 5-5s5 2 5 5z"/></svg>',albums:'<svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M7 7h10"/></svg>'};
 function hue(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%360;return h}
 function grad(s){var h=hue(s);return"linear-gradient(135deg,hsl("+h+",60%,48%),hsl("+((h+60)%360)+",55%,22%))"}
@@ -260,8 +260,8 @@ function covers(){
 deezer(e.dataset.k,e.dataset.a,e.dataset.n).then(function(url){
 if(url){e.style.background="url('"+url+"') center/cover";e.classList.add("has-art")}})})
 }
-function api(method,extra){
-return fetch("https://ws.audioscrobbler.com/2.0/?method="+method+"&user="+encodeURIComponent(USER)+"&api_key="+encodeURIComponent(KEY)+"&format=json"+(extra||""),{cache:"no-store"})
+function api(method){
+return fetch(API+"?method="+method,{cache:"no-store"})
 .then(function(r){return r.json()}).then(function(j){if(j.error)throw new Error(j.message);return j})
 }
 function list(k,label,items){
@@ -273,10 +273,10 @@ var art='<div class="art" style="background:'+grad(r.name)+'"'+data(k,who,r.name
 var sub=k=="artists"?"":'<small>'+esc(r.artist.name)+'</small>';
 h+='<div class="tr"><span class="n">'+n+'</span>'+art+'<div class="t"><b>'+esc(r.name)+'</b>'+sub+'</div><span class="c">'+num(r.playcount)+'</span></div>';
 });return h}
-function top(k,one){return api("user.gettop"+k,"&period=7day&limit=12").then(function(j){return list(k,"top "+k,arr(j["top"+k][one]))})}
+function top(k,one){return api("user.gettop"+k).then(function(j){return list(k,"top "+k,arr(j["top"+k][one]))})}
 function stat(k,n,l){return'<div class="stat"><b>'+ICON[k]+num(n)+'</b><span>'+l+'</span></div>'}
 var V={
-now:function(){return api("user.getrecenttracks","&limit=1").then(function(j){
+now:function(){return api("user.getrecenttracks").then(function(j){
 var x=arr(j.recenttracks.track)[0];
 if(!x)return msg("no scrobbles yet.");
 var live=x["@attr"]&&x["@attr"].nowplaying==="true";
@@ -293,12 +293,12 @@ return'<div class="stats">'+stat("tracks",u.playcount,"scrobbles")+stat("artists
 var p=document.getElementById("panel"),b=[].slice.call(document.querySelectorAll("#tabs button")),active="now";
 function show(k,quiet){
 active=k;b.forEach(function(x){x.classList.toggle("on",x.dataset.t===k)});
-if(!USER||!KEY){p.innerHTML=msg("music stats coming soon.");return}
+if(!API){p.innerHTML=msg("music stats coming soon.");return}
 if(!quiet)p.innerHTML=msg("loading…");
 V[k]().then(function(h){if(active===k){p.innerHTML=h;covers()}}).catch(function(){if(active===k&&!quiet)p.innerHTML=msg("couldn’t load last.fm right now.")});
 }
 b.forEach(function(x){x.addEventListener("click",function(){show(x.dataset.t)})});
-setInterval(function(){if(active==="now"&&USER&&KEY&&!document.hidden&&document.body.dataset.view==="music")show("now",true)},30000);
+setInterval(function(){if(active==="now"&&API&&!document.hidden&&document.body.dataset.view==="music")show("now",true)},30000);
 show("now");
 })();
 </script>
